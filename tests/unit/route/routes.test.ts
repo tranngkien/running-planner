@@ -9,36 +9,48 @@ function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
 
-const ll = (p: typeof A) => ({ location: { latLng: { latitude: p.lat, longitude: p.lng } } });
+const OK_BODY = { routes: [{ summary: { distance: 21034.5, duration: 15000 }, geometry: "abc" }] };
 
-describe("createLoopRouter (Routes API computeRoutes)", () => {
-  it("gửi vòng đi bộ khép kín và trả km + polyline", async () => {
-    const fetchFn = vi.fn(async () =>
-      jsonResponse({ routes: [{ distanceMeters: 21034, polyline: { encodedPolyline: "abc" } }] }),
-    );
-    const computeLoop = createLoopRouter({ apiKey: "server-key", fetchFn });
-    expect(await computeLoop([A, B, C])).toEqual({ distanceKm: 21.034, polyline: "abc" });
+describe("createLoopRouter (OpenRouteService directions foot-walking)", () => {
+  it("gửi vòng đi bộ khép kín ([lng,lat]) và trả km + polyline", async () => {
+    const fetchFn = vi.fn(async () => jsonResponse(OK_BODY));
+    const computeLoop = createLoopRouter({ apiKey: "ors-key", fetchFn });
+    expect(await computeLoop([A, B, C])).toEqual({ distanceKm: 21.0345, polyline: "abc" });
 
     const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("https://routes.googleapis.com/directions/v2:computeRoutes");
+    expect(url).toBe("https://api.openrouteservice.org/v2/directions/foot-walking/json");
+    expect(init.method).toBe("POST");
     const headers = init.headers as Record<string, string>;
-    expect(headers["X-Goog-Api-Key"]).toBe("server-key");
-    expect(headers["X-Goog-FieldMask"]).toBe("routes.distanceMeters,routes.polyline.encodedPolyline");
+    expect(headers.Authorization).toBe("ors-key");
     const body = JSON.parse(init.body as string);
-    expect(body.travelMode).toBe("WALK");
-    expect(body.origin).toEqual(ll(A));
-    expect(body.destination).toEqual(ll(A));
-    expect(body.intermediates).toEqual([ll(B), ll(C)]);
+    const ll = (p: typeof A) => [p.lng, p.lat];
+    expect(body.coordinates).toEqual([ll(A), ll(B), ll(C), ll(A)]);
+    expect(body.instructions).toBe(false);
+    expect(body.radiuses).toEqual([1000, 1000, 1000, 1000]);
   });
 
-  it("không có tuyến → NO_ROUTE", async () => {
-    const computeLoop = createLoopRouter({ apiKey: "k", fetchFn: async () => jsonResponse({}) });
+  it.each([2009, 2010])("lỗi ORS %i (không có tuyến / không có điểm đi được) → NO_ROUTE", async (code) => {
+    const computeLoop = createLoopRouter({
+      apiKey: "k",
+      fetchFn: async () => jsonResponse({ error: { code, message: "x" } }, 404),
+    });
     await expect(computeLoop([A, B])).rejects.toMatchObject({ code: "NO_ROUTE" });
   });
 
-  it("HTTP lỗi hoặc mất mạng → SERVICE_UNAVAILABLE", async () => {
-    const r1 = createLoopRouter({ apiKey: "k", fetchFn: async () => jsonResponse({}, 503) });
-    await expect(r1([A, B])).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+  it("response không có routes → NO_ROUTE", async () => {
+    const computeLoop = createLoopRouter({ apiKey: "k", fetchFn: async () => jsonResponse({ routes: [] }) });
+    await expect(computeLoop([A, B])).rejects.toMatchObject({ code: "NO_ROUTE" });
+  });
+
+  it("HTTP 429/503, lỗi tham số hoặc mất mạng → SERVICE_UNAVAILABLE", async () => {
+    for (const [status, body] of [
+      [429, { error: "Rate limit exceeded" }],
+      [503, {}],
+      [400, { error: { code: 2003, message: "invalid" } }],
+    ] as const) {
+      const r = createLoopRouter({ apiKey: "k", fetchFn: async () => jsonResponse(body, status) });
+      await expect(r([A, B])).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+    }
     const r2 = createLoopRouter({
       apiKey: "k",
       fetchFn: async () => {

@@ -23,10 +23,10 @@ export default defineConfig({
     timeout: 300_000,
     env: {
       ADMIN_USERNAME: E2E_USER,
-      ADMIN_PASSWORD_HASH: bcrypt.hashSync(E2E_PASSWORD, 4),
+      // base64: tránh ký tự $ bị Next diễn giải khi có file .env.local
+      ADMIN_PASSWORD_HASH: Buffer.from(bcrypt.hashSync(E2E_PASSWORD, 4)).toString("base64"),
       SESSION_SECRET: "e2e-session-secret-at-least-32-characters-long",
       ROUTE_SERVICE_MODE: "mock",
-      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY: "",
     },
   },
 });

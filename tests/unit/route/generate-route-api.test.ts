@@ -86,7 +86,7 @@ describe("POST /api/routes/generate", () => {
   it("thiếu cấu hình key ở chế độ thật → 503, không crash", async () => {
     process.env.ROUTE_SERVICE_MODE = "";
     delete process.env.GEMINI_API_KEY;
-    delete process.env.GOOGLE_MAPS_SERVER_KEY;
+    delete process.env.ORS_API_KEY;
     const res = await POST(req({ prompt: "Times City", distanceKm: 10 }));
     expect(res.status).toBe(503);
   });

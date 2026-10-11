@@ -35,6 +35,12 @@ describe("POST /api/auth/login", () => {
     expect(await verifySession(value, SECRET)).toEqual({ username: "admin" });
   });
 
+  it("ADMIN_PASSWORD_HASH dạng base64 → đăng nhập đúng vẫn được", async () => {
+    process.env.ADMIN_PASSWORD_HASH = Buffer.from(bcrypt.hashSync("dung-mat-khau", 4)).toString("base64");
+    const res = await login(req({ username: "admin", password: "dung-mat-khau" }));
+    expect(res.status).toBe(200);
+  });
+
   it("sai mật khẩu → 401 với thông báo chung", async () => {
     const res = await login(req({ username: "admin", password: "sai" }));
     expect(res.status).toBe(401);

@@ -65,7 +65,11 @@ test.describe("Tạo map", () => {
     const points = page.getByTestId("route-points").getByRole("listitem");
     await expect(points.first()).toContainText("Times City");
     await expect(page.getByTestId("route-points")).toContainText("Cầu Long Biên");
-    await expect(page.getByTestId("route-preview")).toBeVisible();
+    // Bản đồ Leaflet (OpenStreetMap) hiển thị và đã vẽ đường chạy
+    const map = page.getByTestId("route-map");
+    await expect(map).toBeVisible();
+    await expect(map.locator("path.leaflet-interactive").first()).toBeVisible();
+    await expect(map).toContainText("OpenStreetMap");
   });
 
   test("AC5: cự ly quá ngắn → báo không thể tạo map", async ({ page }) => {

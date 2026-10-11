@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyPassword } from "@/lib/auth/password";
+import { normalizeHash, verifyPassword } from "@/lib/auth/password";
 import {
   createSession,
   getSessionSecret,
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   const { username, password } = parsed.data;
   const expectedUser = process.env.ADMIN_USERNAME ?? "";
-  const hash = process.env.ADMIN_PASSWORD_HASH ?? "";
+  const hash = normalizeHash(process.env.ADMIN_PASSWORD_HASH);
   // Luôn chạy verifyPassword để thời gian phản hồi không lộ việc sai username
   const passwordOk = await verifyPassword(password, hash);
   if (!expectedUser || username !== expectedUser || !passwordOk) {

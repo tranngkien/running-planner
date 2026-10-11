@@ -3,55 +3,46 @@ import type { LatLng } from "./geo";
 
 export type GeocodedPlace = LatLng & { query: string; name: string; address: string };
 
-type FetchFn = (url: string, init: RequestInit) => Promise<Response>;
+type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
 
-const ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
-const FIELD_MASK = "places.displayName,places.formattedAddress,places.location";
-const BIAS_RADIUS_M = 30_000;
+const ENDPOINT = "https://api.openrouteservice.org/geocode/search";
 
-type PlacesResponse = {
-  places?: {
-    displayName?: { text?: string };
-    formattedAddress?: string;
-    location?: { latitude: number; longitude: number };
+type GeocodeResponse = {
+  features?: {
+    geometry?: { coordinates?: [number, number] };
+    properties?: { name?: string; label?: string };
   }[];
 };
 
+/** Tìm toạ độ địa danh bằng OpenRouteService geocode (Pelias, dữ liệu OpenStreetMap). */
 export function createGeocoder({ apiKey, fetchFn = fetch }: { apiKey: string; fetchFn?: FetchFn }) {
   return async function geocode(query: string, bias?: LatLng): Promise<GeocodedPlace> {
-    const body: Record<string, unknown> = { textQuery: query, languageCode: "vi", regionCode: "VN", pageSize: 1 };
+    const params = new URLSearchParams({ api_key: apiKey, text: query, "boundary.country": "VN", size: "1" });
     if (bias) {
-      body.locationBias = {
-        circle: { center: { latitude: bias.lat, longitude: bias.lng }, radius: BIAS_RADIUS_M },
-      };
+      params.set("focus.point.lat", String(bias.lat));
+      params.set("focus.point.lon", String(bias.lng));
     }
 
-    let data: PlacesResponse;
+    let data: GeocodeResponse;
     try {
-      const res = await fetchFn(ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": FIELD_MASK,
-        },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(`Places HTTP ${res.status}: ${await res.text()}`);
+      const res = await fetchFn(`${ENDPOINT}?${params}`, { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`ORS geocode HTTP ${res.status}: ${await res.text()}`);
       data = await res.json();
     } catch (e) {
       console.error("[places] geocode lỗi:", e);
       throw new RouteError("SERVICE_UNAVAILABLE");
     }
 
-    const place = data.places?.find((p) => p.location);
-    if (!place?.location) throw new RouteError("PLACE_NOT_FOUND", { place: query });
+    const feature = data.features?.find((f) => f.geometry?.coordinates?.length === 2);
+    const coords = feature?.geometry?.coordinates;
+    if (!coords) throw new RouteError("PLACE_NOT_FOUND", { place: query });
+    const [lng, lat] = coords;
     return {
       query,
-      name: place.displayName?.text ?? query,
-      address: place.formattedAddress ?? "",
-      lat: place.location.latitude,
-      lng: place.location.longitude,
+      name: feature.properties?.name || query,
+      address: feature.properties?.label ?? "",
+      lat,
+      lng,
     };
   };
 }

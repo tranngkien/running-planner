@@ -12,9 +12,9 @@ export function getRouteServices(env: NodeJS.ProcessEnv = process.env): RouteSer
   if (env.ROUTE_SERVICE_MODE === "mock") return createMockServices();
 
   const geminiKey = env.GEMINI_API_KEY;
-  const mapsKey = env.GOOGLE_MAPS_SERVER_KEY;
-  if (!geminiKey || !mapsKey) {
-    console.error("[services] Thiếu GEMINI_API_KEY hoặc GOOGLE_MAPS_SERVER_KEY");
+  const orsKey = env.ORS_API_KEY;
+  if (!geminiKey || !orsKey) {
+    console.error("[services] Thiếu GEMINI_API_KEY hoặc ORS_API_KEY");
     throw new RouteError("SERVICE_UNAVAILABLE");
   }
 
@@ -23,7 +23,7 @@ export function getRouteServices(env: NodeJS.ProcessEnv = process.env): RouteSer
       client: new GoogleGenAI({ apiKey: geminiKey }),
       model: env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
     }),
-    geocode: createGeocoder({ apiKey: mapsKey }),
-    computeLoop: createLoopRouter({ apiKey: mapsKey }),
+    geocode: createGeocoder({ apiKey: orsKey }),
+    computeLoop: createLoopRouter({ apiKey: orsKey }),
   };
 }

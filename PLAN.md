@@ -95,6 +95,8 @@ Các lời gọi dịch vụ ngoài được inject qua tham số để test b�
   - geocode: đúng URL/query, bias → `focus.point`, `[lng,lat]` → `{lat,lng}`, rỗng → `PLACE_NOT_FOUND`, HTTP lỗi/mất mạng → `SERVICE_UNAVAILABLE`.
   - directions: đúng URL/header/body, vòng khép kín, trả km + polyline; lỗi 2009/2010 hoặc không có `routes` → `NO_ROUTE`; 429/503/mất mạng → `SERVICE_UNAVAILABLE`.
   - E2E AC4: bản đồ Leaflet vẽ polyline.
+- Phát sinh: khi có file `.env*`, `@next/env` diễn giải lại cả biến môi trường sẵn có chứa `$` → hash bcrypt thô bị thành chuỗi rỗng. Thêm `normalizeHash()` trong `password.ts` nhận hash thô hoặc base64; `.env.local`, E2E dùng dạng base64.
+  - Test: hash thô → giữ nguyên; base64 → giải mã ra `$2…`; chuỗi rác/rỗng → `""`; login API đúng mật khẩu với hash base64 → 200.
 
 ## Rủi ro / điểm cần lưu ý
 - Gemini Flash free tier có giới hạn request/phút và /ngày; bị 429 thì app báo "Dịch vụ tạm thời không khả dụng". Key Gemini đặt trong project không gắn billing để không phát sinh phí.

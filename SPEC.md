@@ -23,7 +23,7 @@ Ví dụ: *"Tôi muốn tạo 1 map chạy xuất phát từ cổng Times City v
 
 ### Đăng nhập
 - **R1** — Mọi trang và API (trừ `/login` và `/api/auth/login`) yêu cầu đăng nhập. Chưa đăng nhập: trang bị chuyển về `/login`, API trả `401`.
-- **R2** — Chỉ có một tài khoản admin, cấu hình qua biến môi trường (`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` bcrypt). Không có chức năng đăng ký.
+- **R2** — Chỉ có một tài khoản admin, cấu hình qua biến môi trường (`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` bcrypt — dạng thô `$2…` hoặc mã hoá base64 để tránh ký tự `$` bị Next diễn giải khi có file `.env`). Không có chức năng đăng ký.
 - **R3** — Đăng nhập đúng → tạo phiên (cookie httpOnly, ký JWT, hết hạn sau 7 ngày) và chuyển về trang chính. Sai → thông báo "Sai tên đăng nhập hoặc mật khẩu" (không nói rõ sai trường nào).
 - **R4** — Có nút Đăng xuất, xoá phiên và quay về `/login`.
 
