@@ -5,7 +5,9 @@ Tham chiếu yêu cầu: [SPEC.md](SPEC.md). Quy trình: [WORKFLOW.md](WORKFLOW.
 ## Tech stack
 - **Next.js (App Router) + TypeScript**, 1 service duy nhất trên Cloud Run.
 - **Tailwind CSS** (+ component tự viết theo skill UI/UX).
-- **Google Maps JS API** qua `@vis.gl/react-google-maps`; **Places API (New) Text Search**; **Routes API computeRoutes** (`WALK`).
+- **OpenRouteService** (free, key không cần thẻ): geocode search (Pelias) để tìm toạ độ, directions `foot-walking` để dựng tuyến. Polyline mã hoá 1e5 giống Google.
+- **Leaflet + react-leaflet** với bản đồ nền OpenStreetMap (không cần key).
+- *(Trước đây dùng Google Maps Platform; đã bỏ vì billing account không có thẻ hợp lệ — xem T9.)*
 - **Gemini Flash mới nhất** (`gemini-flash-latest`, free tier) qua `@google/genai`, structured output. Gemini Pro không có free tier (hạn mức 0) nên không dùng; đổi được qua `GEMINI_MODEL`.
 - Auth: `bcryptjs` + `jose` (JWT cookie httpOnly), `middleware.ts`.
 - Test: **Vitest** (unit/integration), **Playwright** (E2E).
@@ -27,8 +29,8 @@ tests/unit/**, tests/e2e/**
 
 ## Thuật toán tạo tuyến (`generate.ts`)
 1. `parsePrompt(prompt)` → `{ start, waypoints[] }` (Gemini). Không có `start` → lỗi R12.
-2. `geocode(name)` cho từng địa danh (Places). Không tìm thấy → lỗi R13.
-3. `computeLoop([start, ...waypoints, start])` (Routes) → quãng đường `D0`.
+2. `geocode(name)` cho từng địa danh (ORS geocode). Không tìm thấy → lỗi R13.
+3. `computeLoop([start, ...waypoints, start])` (ORS directions) → quãng đường `D0`.
 4. `fitDistance`:
    - `D0 > target·1.03` → lỗi R11 (kèm `minKm = D0`).
    - `|D0 − target| ≤ 3%` → xong.
@@ -83,10 +85,24 @@ Các lời gọi dịch vụ ngoài được inject qua tham số để test b�
 - Kiểm tra: smoke test URL thật (AC1, AC2, AC4), kiểm tra AC10 trên bundle build.
 - Cập nhật README hướng dẫn deploy.
 
+### T9 — Chuyển sang OpenStreetMap (thay Google Maps)
+- Lý do: Google Maps Platform báo "You must enable Billing" — thẻ của billing account đã đóng, Google không cho thêm thẻ mới (`OR_BACR2_31`).
+- `places.ts` → ORS geocode `GET /geocode/search` (`text`, `boundary.country=VN`, `size=1`, `focus.point.*` khi có bias).
+- `routes.ts` → ORS `POST /v2/directions/foot-walking/json` (toạ độ `[lng,lat]`, vòng khép kín, `instructions:false`, `radiuses` 1000 m).
+- Bản đồ: Leaflet + tile OSM, polyline decode bằng `decodePolyline`; bỏ component Google Maps và sơ đồ SVG.
+- Env: `ORS_API_KEY` (server) thay cho `GOOGLE_MAPS_SERVER_KEY` / `NEXT_PUBLIC_GOOGLE_MAPS_*`.
+- Test case:
+  - geocode: đúng URL/query, bias → `focus.point`, `[lng,lat]` → `{lat,lng}`, rỗng → `PLACE_NOT_FOUND`, HTTP lỗi/mất mạng → `SERVICE_UNAVAILABLE`.
+  - directions: đúng URL/header/body, vòng khép kín, trả km + polyline; lỗi 2009/2010 hoặc không có `routes` → `NO_ROUTE`; 429/503/mất mạng → `SERVICE_UNAVAILABLE`.
+  - E2E AC4: bản đồ Leaflet vẽ polyline.
+
 ## Rủi ro / điểm cần lưu ý
 - Gemini Flash free tier có giới hạn request/phút và /ngày; bị 429 thì app báo "Dịch vụ tạm thời không khả dụng". Key Gemini đặt trong project không gắn billing để không phát sinh phí.
-- Tuyến đi bộ của Google có thể vòng vèo; điểm vòng có thể rơi vào sông/hồ → thuật toán thử cả hai phía vuông góc.
-- Cloud Run và Google Maps cần billing account; đặt budget alert để tránh phát sinh phí.
+- ORS free có hạn mức theo ngày/phút; mỗi lần tạo tuyến tốn 1–(số địa danh) lượt geocode + tối đa 8 lượt directions.
+- Geocode tiếng Việt của Pelias/OSM kém Google: địa danh có thể lệch hoặc không tìm thấy → Gemini nên trả tên kèm quận/thành phố.
+- Tile OSM: tuân thủ tile usage policy (lượng truy cập thấp, có attribution).
+- Điểm vòng có thể rơi vào sông/hồ → `radiuses` 1000 m + thuật toán thử cả hai phía vuông góc.
+- Billing account của Cloud Run không có thẻ hợp lệ: mức dùng 0đ thì không sao, nếu phát sinh phí Google có thể tạm ngưng project. Budget alert 25.000đ đã đặt.
 
 ## Tiến độ
 - [x] T0 — Cài skill UI/UX
@@ -97,4 +113,5 @@ Các lời gọi dịch vụ ngoài được inject qua tham số để test b�
 - [x] T5 — Wrapper dịch vụ
 - [x] T6 — Endpoint generate
 - [x] T7 — UI
-- [ ] T8 — Deploy
+- [ ] T8 — Deploy (đã deploy lần đầu; chờ T9)
+- [ ] T9 — Chuyển sang OpenStreetMap
