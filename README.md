@@ -20,7 +20,7 @@ node -e "console.log(require('bcryptjs').hashSync('mat-khau-cua-ban', 12))"
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
-> Trong `.env.local`, hash bcrypt có ký tự `$` — đặt trong dấu nháy đơn: `ADMIN_PASSWORD_HASH='$2b$12$...'`.
+> Trong `.env.local`, Next diễn giải ký tự `$` thành biến (kể cả trong dấu nháy). Hash bcrypt phải escape từng `$` thành `\$`: `ADMIN_PASSWORD_HASH=\$2b\$12\$...`. Giá trị trong Secret Manager thì giữ nguyên, không escape.
 
 **Chạy thử không cần API key:** đặt `ROUTE_SERVICE_MODE=mock`. App dùng dữ liệu giả lập (nhận Times City, cầu Long Biên, Hồ Tây, Hồ Gươm) và hiển thị sơ đồ SVG thay cho Google Maps.
 
