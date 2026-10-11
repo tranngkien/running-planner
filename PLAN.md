@@ -92,8 +92,8 @@ Các lời gọi dịch vụ ngoài được inject qua tham số để test b�
 - [x] T0 — Cài skill UI/UX
 - [x] T1 — Scaffold
 - [x] T2 — Auth
-- [ ] T3 — Hình học
-- [ ] T4 — Khớp cự ly
+- [x] T3 — Hình học
+- [x] T4 — Khớp cự ly
 - [ ] T5 — Wrapper dịch vụ
 - [ ] T6 — Endpoint generate
 - [ ] T7 — UI
