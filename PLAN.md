@@ -94,7 +94,7 @@ Các lời gọi dịch vụ ngoài được inject qua tham số để test b�
 - [x] T2 — Auth
 - [x] T3 — Hình học
 - [x] T4 — Khớp cự ly
-- [ ] T5 — Wrapper dịch vụ
+- [x] T5 — Wrapper dịch vụ
 - [ ] T6 — Endpoint generate
 - [ ] T7 — UI
 - [ ] T8 — Deploy

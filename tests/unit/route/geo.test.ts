@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   decodePolyline,
   destinationPoint,
+  encodePolyline,
   haversineKm,
   midpoint,
   offsetPerpendicular,
@@ -71,5 +72,17 @@ describe("decodePolyline", () => {
 
   it("chuỗi rỗng → mảng rỗng", () => {
     expect(decodePolyline("")).toEqual([]);
+  });
+});
+
+describe("encodePolyline", () => {
+  it("mã hoá ra đúng chuỗi mẫu của Google", () => {
+    expect(
+      encodePolyline([
+        { lat: 38.5, lng: -120.2 },
+        { lat: 40.7, lng: -120.95 },
+        { lat: 43.252, lng: -126.453 },
+      ]),
+    ).toBe("_p~iF~ps|U_ulLnnqC_mqNvxq`@");
   });
 });
