@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+
+# Build output
+dist/
+build/
+out/
+coverage/
+
+# Môi trường & bí mật
+.env
+.env.*
+!.env.example
+
+# Log
+*.log
+npm-debug.log*
+
+# IDE / OS
+.vscode/*
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
