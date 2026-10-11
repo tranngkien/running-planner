@@ -119,5 +119,5 @@ Các lời gọi dịch vụ ngoài được inject qua tham số để test b�
 - [x] T5 — Wrapper dịch vụ
 - [x] T6 — Endpoint generate
 - [x] T7 — UI
-- [ ] T8 — Deploy (đã deploy lần đầu; chờ T9)
-- [ ] T9 — Chuyển sang OpenStreetMap
+- [x] T8 — Deploy (Cloud Run: https://running-planner-631255321163.asia-southeast1.run.app)
+- [x] T9 — Chuyển sang OpenStreetMap
