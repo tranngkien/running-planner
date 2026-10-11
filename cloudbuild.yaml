@@ -1,0 +1,23 @@
+# Build image và đẩy lên Artifact Registry.
+# Dùng: gcloud builds submit --config cloudbuild.yaml \
+#         --substitutions=_MAPS_BROWSER_KEY=xxx,_MAPS_MAP_ID=yyy
+substitutions:
+  _REGION: asia-southeast1
+  _REPO: running-planner
+  _MAPS_BROWSER_KEY: ""
+  _MAPS_MAP_ID: ""
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:latest
+      - --build-arg
+      - NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY=${_MAPS_BROWSER_KEY}
+      - --build-arg
+      - NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=${_MAPS_MAP_ID}
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:latest
