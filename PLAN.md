@@ -90,7 +90,7 @@ Các lời gọi dịch vụ ngoài được inject qua tham số để test b�
 
 ## Tiến độ
 - [x] T0 — Cài skill UI/UX
-- [ ] T1 — Scaffold
+- [x] T1 — Scaffold
 - [ ] T2 — Auth
 - [ ] T3 — Hình học
 - [ ] T4 — Khớp cự ly

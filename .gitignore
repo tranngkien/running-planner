@@ -25,3 +25,15 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Next.js
+.next/
+next-env.d.ts
+*.tsbuildinfo
+*.pem
+
+# Test artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
