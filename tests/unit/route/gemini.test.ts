@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { createPromptParser } from "@/lib/route/gemini";
 
-function fakeClient(impl: () => Promise<{ text?: string }>) {
+const noSleep = async () => {};
+
+type GenerateArgs = { model: string; contents: string; config: Record<string, unknown> };
+
+function fakeClient(impl: (args: GenerateArgs) => Promise<{ text?: string }>) {
   return { models: { generateContent: vi.fn(impl) } };
 }
 
@@ -56,8 +60,50 @@ describe("createPromptParser (Gemini)", () => {
         throw Object.assign(new Error("quota"), { status: 429 });
       }),
       model: "m",
+      sleep: noSleep,
     });
     await expect(parse("x")).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+  });
+
+  it("503 tạm thời rồi thành công → thử lại và trả kết quả", async () => {
+    let calls = 0;
+    const client = fakeClient(async () => {
+      calls++;
+      if (calls === 1) throw Object.assign(new Error("high demand"), { status: 503 });
+      return { text: JSON.stringify({ start: "Hồ Gươm", waypoints: [] }) };
+    });
+    const parse = createPromptParser({ client, model: "m", sleep: noSleep });
+    expect(await parse("x")).toEqual({ start: "Hồ Gươm", waypoints: [] });
+    expect(calls).toBe(2);
+  });
+
+  it("503 liên tục → SERVICE_UNAVAILABLE sau 3 lần gọi", async () => {
+    const client = fakeClient(async () => {
+      throw Object.assign(new Error("high demand"), { status: 503 });
+    });
+    const parse = createPromptParser({ client, model: "m", sleep: noSleep });
+    await expect(parse("x")).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+    expect(client.models.generateContent).toHaveBeenCalledTimes(3);
+  });
+
+  it("model chính lỗi 503/429 liên tục → chuyển sang model dự phòng", async () => {
+    const client = fakeClient(async (args) => {
+      if (args.model === "chinh") throw Object.assign(new Error("quota"), { status: 429 });
+      return { text: JSON.stringify({ start: "Hồ Gươm", waypoints: [] }) };
+    });
+    const parse = createPromptParser({ client, model: "chinh", fallbackModel: "du-phong", sleep: noSleep });
+    expect(await parse("x")).toEqual({ start: "Hồ Gươm", waypoints: [] });
+    const models = client.models.generateContent.mock.calls.map(([args]) => args.model);
+    expect(models.at(-1)).toBe("du-phong");
+  });
+
+  it("lỗi 400 → không thử lại", async () => {
+    const client = fakeClient(async () => {
+      throw Object.assign(new Error("bad request"), { status: 400 });
+    });
+    const parse = createPromptParser({ client, model: "m", sleep: noSleep });
+    await expect(parse("x")).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+    expect(client.models.generateContent).toHaveBeenCalledTimes(1);
   });
 
   it("trả về không phải JSON → SERVICE_UNAVAILABLE", async () => {

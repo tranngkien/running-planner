@@ -57,6 +57,28 @@ describe("fitDistance", () => {
     expect(res.orderedPoints[0]).toEqual(START);
   });
 
+  it("chỉ có điểm xuất phát → không gọi vòng cơ bản S→S (dịch vụ thật trả 0 km / lỗi)", async () => {
+    const computeLoop = vi.fn(async (p: LatLng[]) => {
+      if (p.length === 1) throw new RouteError("NO_ROUTE");
+      return fakeLoop(p);
+    });
+    const res = await fitDistance({ points: [START], targetKm: 10, computeLoop });
+    expect(Math.abs(res.distanceKm - 10) / 10).toBeLessThanOrEqual(0.03);
+    expect(computeLoop.mock.calls.every(([p]) => p.length > 1)).toBe(true);
+  });
+
+  it("quãng đường nhảy vọt ở một hướng (sông/đường ray) → thử hướng khác và đạt cự ly", async () => {
+    // Điểm vòng nằm phía bắc điểm xuất phát → phải vòng qua sông, quãng đường cộng thêm 8 km khi bán kính ≥ 2.4 km
+    const computeLoop = vi.fn(async (p: LatLng[]) => {
+      const base = fakeLoop(p);
+      const north = p.slice(1).some((q) => q.lat > START.lat + 0.005);
+      const far = p.slice(1).some((q) => haversineKm(START, q) >= 2.4);
+      return north && far ? { ...base, distanceKm: base.distanceKm + 8 } : base;
+    });
+    const res = await fitDistance({ points: [START], targetKm: 10, computeLoop });
+    expect(Math.abs(res.distanceKm - 10) / 10).toBeLessThanOrEqual(0.03);
+  });
+
   it("không bao giờ đạt cự ly → ROUTE_IMPOSSIBLE", async () => {
     const err = await fitDistance({
       points: [START, FAR],

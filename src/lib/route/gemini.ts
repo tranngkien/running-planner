@@ -14,6 +14,10 @@ export type GenAIClient = {
 };
 
 const MAX_WAYPOINTS = 5;
+/** Gemini thỉnh thoảng trả 503 "high demand" — lỗi tạm thời, thử lại với backoff. */
+const RETRYABLE_STATUS = new Set([429, 500, 503]);
+const MAX_RETRIES = 2;
+const RETRY_BASE_MS = 800;
 
 const SYSTEM_INSTRUCTION = `Bạn bóc tách mô tả tuyến chạy bộ tiếng Việt thành dữ liệu có cấu trúc.
 - "start": địa điểm xuất phát, viết thành tên tìm được trên Google Maps (thêm thành phố nếu suy ra được, ví dụ "Cổng Times City, Hà Nội"). Nếu mô tả không nêu địa điểm xuất phát nào, trả null.
@@ -29,25 +33,49 @@ const RESPONSE_SCHEMA = {
   required: ["start", "waypoints"],
 };
 
-export function createPromptParser({ client, model }: { client: GenAIClient; model: string }) {
-  return async function parsePrompt(prompt: string): Promise<ParsedPrompt> {
-    let raw: unknown;
-    try {
-      const res = await client.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          responseMimeType: "application/json",
-          responseJsonSchema: RESPONSE_SCHEMA,
-          temperature: 0,
-        },
-      });
-      raw = JSON.parse(res.text ?? "");
-    } catch (e) {
-      console.error("[gemini] parsePrompt lỗi:", e);
-      throw new RouteError("SERVICE_UNAVAILABLE");
+export function createPromptParser({
+  client,
+  model,
+  fallbackModel,
+  sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+}: {
+  client: GenAIClient;
+  model: string;
+  fallbackModel?: string;
+  sleep?: (ms: number) => Promise<void>;
+}) {
+  const models = [...new Set([model, fallbackModel].filter((m): m is string => Boolean(m)))];
+
+  /** Gọi Gemini, thử lại khi lỗi tạm thời (429/5xx); hết lượt thì chuyển sang model dự phòng. */
+  async function generateJson(prompt: string): Promise<unknown> {
+    for (const m of models) {
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const res = await client.models.generateContent({
+            model: m,
+            contents: prompt,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              responseMimeType: "application/json",
+              responseJsonSchema: RESPONSE_SCHEMA,
+              temperature: 0,
+            },
+          });
+          return JSON.parse(res.text ?? "");
+        } catch (e) {
+          const status = (e as { status?: number }).status;
+          const retryable = status !== undefined && RETRYABLE_STATUS.has(status);
+          console.error(`[gemini] ${m} lần ${attempt + 1} lỗi:`, e);
+          if (!retryable) throw new RouteError("SERVICE_UNAVAILABLE");
+          if (attempt < MAX_RETRIES) await sleep(RETRY_BASE_MS * 2 ** attempt);
+        }
+      }
     }
+    throw new RouteError("SERVICE_UNAVAILABLE");
+  }
+
+  return async function parsePrompt(prompt: string): Promise<ParsedPrompt> {
+    const raw = await generateJson(prompt);
 
     const data = (raw ?? {}) as { start?: unknown; waypoints?: unknown };
     const start = typeof data.start === "string" ? data.start.trim() : "";

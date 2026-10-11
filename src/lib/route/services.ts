@@ -6,7 +6,8 @@ import { createMockServices } from "./mock";
 import { createGeocoder } from "./places";
 import { createLoopRouter } from "./routes";
 
-const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
+const DEFAULT_GEMINI_MODEL = "gemini-flash-lite-latest";
+const DEFAULT_GEMINI_FALLBACK_MODEL = "gemini-flash-latest";
 
 export function getRouteServices(env: NodeJS.ProcessEnv = process.env): RouteServices {
   if (env.ROUTE_SERVICE_MODE === "mock") return createMockServices();
@@ -22,6 +23,7 @@ export function getRouteServices(env: NodeJS.ProcessEnv = process.env): RouteSer
     parsePrompt: createPromptParser({
       client: new GoogleGenAI({ apiKey: geminiKey }),
       model: env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+      fallbackModel: env.GEMINI_FALLBACK_MODEL || DEFAULT_GEMINI_FALLBACK_MODEL,
     }),
     geocode: createGeocoder({ apiKey: orsKey }),
     computeLoop: createLoopRouter({ apiKey: orsKey }),

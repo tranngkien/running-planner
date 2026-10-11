@@ -8,7 +8,7 @@ Tham chiếu yêu cầu: [SPEC.md](SPEC.md). Quy trình: [WORKFLOW.md](WORKFLOW.
 - **OpenRouteService** (free, key không cần thẻ): geocode search (Pelias) để tìm toạ độ, directions `foot-walking` để dựng tuyến. Polyline mã hoá 1e5 giống Google.
 - **Leaflet + react-leaflet** với bản đồ nền OpenStreetMap (không cần key).
 - *(Trước đây dùng Google Maps Platform; đã bỏ vì billing account không có thẻ hợp lệ — xem T9.)*
-- **Gemini Flash mới nhất** (`gemini-flash-latest`, free tier) qua `@google/genai`, structured output. Gemini Pro không có free tier (hạn mức 0) nên không dùng; đổi được qua `GEMINI_MODEL`.
+- **Gemini Flash-Lite mới nhất** (`gemini-flash-lite-latest`, free tier) qua `@google/genai`, structured output; dự phòng `gemini-flash-latest` khi lỗi 429/5xx (hạn mức/ngày của Flash rất thấp). Gemini Pro không có free tier nên không dùng.
 - Auth: `bcryptjs` + `jose` (JWT cookie httpOnly), `middleware.ts`.
 - Test: **Vitest** (unit/integration), **Playwright** (E2E).
 - Deploy: Dockerfile (Next standalone) → `gcloud run deploy`, region `asia-southeast1`, Secret Manager.
@@ -95,6 +95,10 @@ Các lời gọi dịch vụ ngoài được inject qua tham số để test b�
   - geocode: đúng URL/query, bias → `focus.point`, `[lng,lat]` → `{lat,lng}`, rỗng → `PLACE_NOT_FOUND`, HTTP lỗi/mất mạng → `SERVICE_UNAVAILABLE`.
   - directions: đúng URL/header/body, vòng khép kín, trả km + polyline; lỗi 2009/2010 hoặc không có `routes` → `NO_ROUTE`; 429/503/mất mạng → `SERVICE_UNAVAILABLE`.
   - E2E AC4: bản đồ Leaflet vẽ polyline.
+- Phát sinh (chạy thật): ORS geocode trả kết quả thô (ví dụ "Hồ Gươm" → `locality: Hanoi`) → coi kết quả layer `locality/region/county/country/macro*/localadmin` là không đủ chính xác và dự phòng sang **Nominatim** (OSM, free, không key, header User-Agent). ORS lỗi HTTP cũng dự phòng sang Nominatim; cả hai lỗi → `SERVICE_UNAVAILABLE`; cả hai không có kết quả → `PLACE_NOT_FOUND`.
+  - Test: ORS venue → dùng ORS, không gọi Nominatim; ORS locality → dùng Nominatim; ORS lỗi → Nominatim; Nominatim có bias → gửi `viewbox`; cả hai rỗng → `PLACE_NOT_FOUND`; cả hai lỗi → `SERVICE_UNAVAILABLE`.
+- Phát sinh: Gemini thỉnh thoảng trả 503 "high demand" → `parsePrompt` thử lại tối đa 2 lần (backoff) với lỗi 429/500/503.
+  - Test: 503 rồi thành công → kết quả đúng, gọi 2 lần; 503 liên tục → `SERVICE_UNAVAILABLE` sau 3 lần; lỗi 400 → không thử lại.
 - Phát sinh: khi có file `.env*`, `@next/env` diễn giải lại cả biến môi trường sẵn có chứa `$` → hash bcrypt thô bị thành chuỗi rỗng. Thêm `normalizeHash()` trong `password.ts` nhận hash thô hoặc base64; `.env.local`, E2E dùng dạng base64.
   - Test: hash thô → giữ nguyên; base64 → giải mã ra `$2…`; chuỗi rác/rỗng → `""`; login API đúng mật khẩu với hash base64 → 200.
 
