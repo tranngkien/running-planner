@@ -86,7 +86,7 @@ gcloud run deploy running-planner \
   --image=asia-southeast1-docker.pkg.dev/<PROJECT_ID>/running-planner/app:latest \
   --region=asia-southeast1 --allow-unauthenticated \
   --min-instances=0 --max-instances=1 --memory=512Mi \
-  --set-env-vars=ADMIN_USERNAME=admin,GEMINI_MODEL=gemini-pro-latest \
+  --set-env-vars=ADMIN_USERNAME=admin,GEMINI_MODEL=gemini-flash-latest \
   --set-secrets=GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_MAPS_SERVER_KEY=maps-server-key:latest,SESSION_SECRET=session-secret:latest,ADMIN_PASSWORD_HASH=admin-password-hash:latest
 ```
 

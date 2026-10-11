@@ -6,7 +6,7 @@ Tham chiếu yêu cầu: [SPEC.md](SPEC.md). Quy trình: [WORKFLOW.md](WORKFLOW.
 - **Next.js (App Router) + TypeScript**, 1 service duy nhất trên Cloud Run.
 - **Tailwind CSS** (+ component tự viết theo skill UI/UX).
 - **Google Maps JS API** qua `@vis.gl/react-google-maps`; **Places API (New) Text Search**; **Routes API computeRoutes** (`WALK`).
-- **Gemini Pro mới nhất** qua `@google/genai`, structured output.
+- **Gemini Flash mới nhất** (`gemini-flash-latest`, free tier) qua `@google/genai`, structured output. Gemini Pro không có free tier (hạn mức 0) nên không dùng; đổi được qua `GEMINI_MODEL`.
 - Auth: `bcryptjs` + `jose` (JWT cookie httpOnly), `middleware.ts`.
 - Test: **Vitest** (unit/integration), **Playwright** (E2E).
 - Deploy: Dockerfile (Next standalone) → `gcloud run deploy`, region `asia-southeast1`, Secret Manager.
@@ -84,7 +84,7 @@ Các lời gọi dịch vụ ngoài được inject qua tham số để test b�
 - Cập nhật README hướng dẫn deploy.
 
 ## Rủi ro / điểm cần lưu ý
-- Gemini Pro free tier có giới hạn request/phút thấp → nếu bị 429 thường xuyên, cân nhắc dùng bản Flash cho bước bóc prompt.
+- Gemini Flash free tier có giới hạn request/phút và /ngày; bị 429 thì app báo "Dịch vụ tạm thời không khả dụng". Key Gemini đặt trong project không gắn billing để không phát sinh phí.
 - Tuyến đi bộ của Google có thể vòng vèo; điểm vòng có thể rơi vào sông/hồ → thuật toán thử cả hai phía vuông góc.
 - Cloud Run và Google Maps cần billing account; đặt budget alert để tránh phát sinh phí.
 

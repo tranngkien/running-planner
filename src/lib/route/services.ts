@@ -6,7 +6,7 @@ import { createMockServices } from "./mock";
 import { createGeocoder } from "./places";
 import { createLoopRouter } from "./routes";
 
-const DEFAULT_GEMINI_MODEL = "gemini-pro-latest";
+const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
 
 export function getRouteServices(env: NodeJS.ProcessEnv = process.env): RouteServices {
   if (env.ROUTE_SERVICE_MODE === "mock") return createMockServices();
